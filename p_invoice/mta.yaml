@@ -1,0 +1,81 @@
+_schema-version: "3.2"
+ID: P_invoice
+version: 0.0.1
+modules:
+- name: p-invoice-approuter
+  type: approuter.nodejs
+  path: p-invoice-approuter
+  requires:
+  - name: P_invoice_html_repo_runtime
+  - name: uaa_P_invoice
+  - name: P_invoice-destination-service
+    group: destinations
+    properties:
+      forwardAuthToken: false
+      name: ui5
+      url: https://ui5.sap.com
+  parameters:
+    disk-quota: 256M
+    memory: 256M
+- name: P_invoice_ui_deployer
+  type: com.sap.application.content
+  path: .
+  requires:
+  - name: P_invoice_html_repo_host
+    parameters:
+      content-target: true
+  build-parameters:
+    build-result: resources
+    requires:
+    - artifacts:
+      - pinvoice.zip
+      name: pinvoice
+      target-path: resources/
+- name: pinvoice
+  type: html5
+  path: p_invoice
+  build-parameters:
+    build-result: dist
+    builder: custom
+    commands:
+    - npm install
+    - npm run build:cf
+    supported-platforms: []
+resources:
+- name: P_invoice_html_repo_runtime
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-plan: app-runtime
+- name: uaa_P_invoice
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: P_invoice-xsuaa-service
+    service-plan: application
+- name: P_invoice_html_repo_host
+  type: org.cloudfoundry.managed-service
+  parameters:
+    service: html5-apps-repo
+    service-plan: app-host
+- name: P_invoice-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: false
+      init_data:
+        instance:
+          destinations:
+          - Authentication: NoAuthentication
+            Name: ui5
+            ProxyType: Internet
+            Type: HTTP
+            URL: https://ui5.sap.com
+          existing_destinations_policy: update
+      version: 1.0.0
+    service: destination
+    service-name: P_invoice-destination-service
+    service-plan: lite
+parameters:
+  deploy_mode: html5-repo
